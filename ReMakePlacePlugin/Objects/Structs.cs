@@ -184,8 +184,8 @@ public unsafe struct LayoutWorld
 public struct LayoutManager
 {
     [FieldOffset(0x20)] public uint TerritoryTypeId;
-    [FieldOffset(0x80)] private readonly IntPtr _housingController;
-    [FieldOffset(0x90)] private readonly IntPtr _indoorAreaData;
+    [FieldOffset(0x0A0)] private readonly IntPtr _housingController;
+    [FieldOffset(0x0B0)] private readonly IntPtr _indoorAreaData;
 
     public HousingController? HousingController
     {
