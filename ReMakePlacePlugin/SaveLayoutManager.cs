@@ -1,3 +1,5 @@
+// 布局导入导出与文件读写逻辑。
+// 负责保存、加载与格式转换。
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game.MJI;
 using Lumina.Excel.Sheets;
@@ -603,6 +605,7 @@ public class SaveLayoutManager
         File.WriteAllText(Config.SaveLocation, result);
 
 
-        Log("Finished exporting layout");
+        Log("布局导出完成");
     }
 }
+

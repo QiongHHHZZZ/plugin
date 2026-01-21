@@ -1,4 +1,6 @@
-﻿using Dalamud.Game.Addon.Lifecycle;
+// 插件核心生命周期与主要流程入口。
+// 负责命令注册、布局处理与染色流程调度。
+using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.Command;
 using Dalamud.Game.NativeWrapper;
@@ -75,6 +77,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
     private Stain? PreviouslySelectedStain = null;
     private bool IsSelectingDye = false;
     private List<uint> MissingDyes = new List<uint>();
+    private string? LastPlotLookupError = null;
 
     private TaskManager TaskManager;
 
@@ -91,7 +94,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
         {
             Svc.Commands.AddHandler($"/{commandName}", new CommandInfo(CommandHandler)
             {
-                HelpMessage = "load config window."
+                HelpMessage = "打开配置窗口。"
             });
         }
 
@@ -106,13 +109,13 @@ public class ReMakePlacePlugin : IDalamudPlugin
         {
             OnTaskException = (task, ex, ref @continue, ref abort) =>
             {
-                LogError($"Error during dyeing task '{task.Name}'.");
+                LogError($"染色任务 '{task.Name}' 执行出错。");
                 TaskManager?.Abort();
                 DyeAllItems();
             },
             OnTaskTimeout = (task, ref remainingTimeMs) =>
             {
-                LogError($"Timeout during dyeing task '{task.Name}'.");
+                LogError($"染色任务 '{task.Name}' 超时。");
                 TaskManager?.Abort();
                 DyeAllItems();
             },
@@ -186,7 +189,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
         var stuff = GetSelectedHousingItemAddressHook.Original((long)housingManager);
         if (stuff == 0)
         {
-            LogError("No item selected to interact with.");
+            LogError("未选中要交互的物品。");
             return;
         }
 
@@ -433,7 +436,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
                 if (item.CorrectLocation && item.CorrectRotation)
                 {
-                    Log($"{item.Name} is already correctly placed");
+                    Log($"{item.Name} 已正确摆放");
                     continue;
                 }
 
@@ -446,7 +449,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
         }
         catch (Exception e)
         {
-            LogError($"Error: {e.Message}", e.StackTrace);
+            LogError($"错误: {e.Message}", e.StackTrace);
         }
 
         Cleanup();
@@ -455,7 +458,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
         {
             Memory.Instance.SetPlaceAnywhere(OriginalPlaceAnywhere);
             CurrentlyPlacingItems = false;
-            Log("Finished applying layout");
+        Log("布局应用完成");
         }
     }
 
@@ -463,13 +466,13 @@ public class ReMakePlacePlugin : IDalamudPlugin
     {
         if (!Memory.Instance.CanEditItem())
         {
-            LogError("Unable to set position outside of Rotate Layout mode");
+            LogError("未处于旋转布局模式，无法设置位置");
             return;
         }
 
         if (rowItem.ItemStruct == IntPtr.Zero) return;
 
-        Log("Placing " + rowItem.Name);
+        Log("正在摆放 " + rowItem.Name);
 
         logHousingDetour = true;
         ApplyChange = true;
@@ -508,12 +511,12 @@ public class ReMakePlacePlugin : IDalamudPlugin
     {
         if (CurrentlyPlacingItems)
         {
-            Log($"Already placing items");
+            Log("正在摆放中");
             return;
         }
 
         CurrentlyPlacingItems = true;
-        Log($"Applying layout with interval of {Config.LoadInterval}ms");
+        Log($"正在应用布局，间隔为 {Config.LoadInterval}ms");
 
         ItemsToPlace.Clear();
 
@@ -554,7 +557,11 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
         if (Memory.Instance.GetCurrentTerritory() == Memory.HousingArea.Outdoors)
         {
-            GetPlotLocation();
+            if (!GetPlotLocation())
+            {
+                CurrentlyPlacingItems = false;
+                return;
+            }
         }
 
         OriginalPlaceAnywhere = Memory.Instance.GetPlaceAnywhere();
@@ -574,12 +581,12 @@ public class ReMakePlacePlugin : IDalamudPlugin
     {
         if (CurrentlyDyeingItems)
         {
-            Log($"Already dyeing items");
+            Log("正在染色中");
             return;
         }
 
         CurrentlyDyeingItems = true;
-        Log($"Applying dyes with interval of {Config.LoadInterval}ms");
+        Log($"正在应用染色，间隔为 {Config.LoadInterval}ms");
 
         ItemsToDye.Clear();
 
@@ -612,12 +619,12 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
         if (ItemsToDye.Count == 0)
         {
-            Log("No items need dyeing");
+            Log("没有需要染色的物品");
             CurrentlyDyeingItems = false;
             return;
         }
 
-        Log($"Found {ItemsToDye.Count} items to dye");
+        Log($"找到 {ItemsToDye.Count} 个需要染色的物品");
 
         DyeAllItems();
     }
@@ -629,7 +636,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
             if (ItemsToDye.Count == 0)
             {
                 CurrentlyDyeingItems = false;
-                Log("Finished applying dyes");
+                Log("染色完成");
 
                 if (IsAddonReady("ColorantColoring", out var addon))
                     Callback.Fire(addon, true, 2);
@@ -649,9 +656,9 @@ public class ReMakePlacePlugin : IDalamudPlugin
         }
         catch (Exception e)
         {
-            LogError($"Error: {e.Message}", e.StackTrace);
+            LogError($"错误: {e.Message}", e.StackTrace);
             CurrentlyDyeingItems = false;
-            Log("Finished applying dyes with errors");
+            Log("染色完成，但出现错误");
         }
     }
 
@@ -672,11 +679,11 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
             MissingDyes.Clear();
 
-            Log("Dyeing process stopped");
+            Log("染色流程已停止");
         }
         catch (Exception e)
         {
-            LogError($"Error stopping dyeing process: {e.Message}", e.StackTrace);
+            LogError($"停止染色流程时出错: {e.Message}", e.StackTrace);
         }
     }
 
@@ -684,7 +691,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
     {
         if (!Memory.Instance.CanDyeItem())
         {
-            LogError("Unable to dye item outside of Furnishing Color mode");
+            LogError("未处于家具染色模式，无法染色");
             StopDyeingItems();
             return;
         }
@@ -697,21 +704,21 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
         if (rowItem.DyeMatch)
         {
-            Log($"{rowItem.Name} is already correctly dyed");
+            Log($"{rowItem.Name} 已正确染色");
             DyeAllItems();
             return;
         }
 
         if (RareStains.RareStainIds.Contains(rowItem.Stain) && !Config.UseRareStains)
         {
-            Log($"{rowItem.Name} is dyed with a rare dye, skipping it");
+            Log($"{rowItem.Name} 使用稀有染料，已跳过");
             DyeAllItems();
             return;
         }
 
         if (MissingDyes.Contains(rowItem.Stain))
         {
-            Log($"Missing dye for {rowItem.Name}, skipping it");
+            Log($"缺少 {rowItem.Name} 的染料，已跳过");
             DyeAllItems();
             return;
         }
@@ -723,7 +730,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
             return;
         }
 
-        Log($"Dyeing {rowItem.Name}");
+        Log($"正在染色 {rowItem.Name}");
 
         // Check if dye addon is open, if yes close it, if not continue
         TaskManager.Enqueue(() =>
@@ -777,7 +784,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
                     if (nineGridNode->Color.RGBA == 0xFFFFFFB2)
                     {
                         // Dye button is disabled, skip item
-                        Log($"Dye button is disabled for {rowItem.Name}, skipping.");
+                        Log($"{rowItem.Name} 的染色按钮不可用，已跳过。");
                         TaskManager.Abort();
                         DyeAllItems();
                         return true;
@@ -789,7 +796,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
                 }
                 catch (Exception)
                 {
-                    Log($"Dye button is disabled for {rowItem.Name}, skipping.");
+                    Log($"{rowItem.Name} 的染色按钮不可用，已跳过。");
                     TaskManager.Abort();
                     DyeAllItems();
                     return true;
@@ -812,7 +819,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
                     var redCrossImageNode = GenericHelpers.GetNodeByIDChain(addon->RootNode, 1, 22, 34, nodeIndex, 2, 4)->GetAsAtkImageNode();
                     if (redCrossImageNode->IsVisible())
                     {
-                        Log($"Not enough dye for {rowItem.Name}.");
+                        Log($"{rowItem.Name} 染料不足。");
                         MissingDyes.Add(stain.RowId);
                         TaskManager.Abort();
                         DyeAllItems();
@@ -826,7 +833,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
                 }
                 catch (Exception)
                 {
-                    Log($"Not enough dye for {rowItem.Name}.");
+                    Log($"{rowItem.Name} 染料不足。");
                     MissingDyes.Add(stain.RowId);
                     TaskManager.Abort();
                     DyeAllItems();
@@ -922,7 +929,8 @@ public class ReMakePlacePlugin : IDalamudPlugin
                 break;
 
             case HousingArea.Outdoors:
-                GetPlotLocation();
+                if (!GetPlotLocation())
+                    return;
                 allObjects = Mem.GetExteriorPlacedObjects();
                 ExteriorItemList.ForEach(item =>
                 {
@@ -938,6 +946,9 @@ public class ReMakePlacePlugin : IDalamudPlugin
                 });
                 break;
         }
+
+        if (allObjects == null)
+            return;
 
         List<HousingGameObject> unmatched = new List<HousingGameObject>();
 
@@ -1093,20 +1104,36 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
     }
 
-    public unsafe void GetPlotLocation()
+    public unsafe bool GetPlotLocation()
     {
         var mgr = Memory.Instance.HousingModule->outdoorTerritory;
         var territoryId = Memory.Instance.GetTerritoryTypeId();
 
         if (!Svc.Data.GetExcelSheet<TerritoryType>().TryGetRow(territoryId, out var row))
-        {
-            LogError($"Cannot identify territory: {territoryId}");
-            return;
-        }
+            return LogPlotError($"无法识别区域: {territoryId}");
 
         var placeName = row.Name.ToString();
 
-        PlotLocation = Plots.Map[placeName][mgr->Plot + 1];
+        if (!Plots.Map.TryGetValue(placeName, out var plotMap))
+            return LogPlotError($"缺少区域地图数据: {placeName}");
+
+        var plotKey = mgr->Plot + 1;
+        if (!plotMap.TryGetValue(plotKey, out var location))
+            return LogPlotError($"未找到地块信息: {placeName} #{plotKey}");
+
+        LastPlotLookupError = null;
+        PlotLocation = location;
+        return true;
+    }
+
+    private bool LogPlotError(string message)
+    {
+        if (LastPlotLookupError != message)
+        {
+            LogError(message);
+            LastPlotLookupError = message;
+        }
+        return false;
     }
 
 
@@ -1124,7 +1151,8 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
         var exteriorItems = Memory.GetContainer(InventoryType.HousingExteriorPlacedItems);
 
-        GetPlotLocation();
+        if (!GetPlotLocation())
+            return;
 
         var rotateVector = Quaternion.CreateFromAxisAngle(Vector3.UnitY, PlotLocation.rotation);
 
@@ -1374,3 +1402,4 @@ public class ReMakePlacePlugin : IDalamudPlugin
     }
 
 }
+

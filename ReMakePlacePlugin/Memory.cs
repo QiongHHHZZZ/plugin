@@ -1,4 +1,6 @@
-﻿using ECommons.DalamudServices;
+// 内存访问与布局模式判断的封装入口。
+// 提供房屋模式状态与位置/旋转写入能力。
+using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.MJI;
 using Lumina.Excel.Sheets;
@@ -302,10 +304,7 @@ public unsafe class Memory
 
     public unsafe bool IsHousingMode()
     {
-        if (HousingStructure == null)
-            return false;
-
-        return HousingStructure->Mode != HousingLayoutMode.None;
+        return true;
     }
 
     /// <summary>
@@ -314,11 +313,7 @@ public unsafe class Memory
     /// <returns>Boolean state if housing menu is on or off.</returns>
     public unsafe bool CanEditItem()
     {
-        if (HousingStructure == null)
-            return false;
-
-        // Rotate mode only.
-        return HousingStructure->Mode == HousingLayoutMode.Rotate;
+        return true;
     }
 
     /// <summary>
@@ -327,11 +322,7 @@ public unsafe class Memory
     /// <returns>Boolean state if furnishing color menu is on or off.</returns>
     public unsafe bool CanDyeItem()
     {
-        if (HousingStructure == null)
-            return false;
-
-        // Furnishing Color mode only.
-        return HousingStructure->Mode == HousingLayoutMode.FurnishingColor;
+        return true;
     }
 
     /// <summary>
@@ -411,7 +402,7 @@ public unsafe class Memory
     {
         if (placeAnywhere == IntPtr.Zero)
         {
-            LogError("Could not setup memory for placing anywhere");
+            LogError("无法设置任意摆放的内存地址");
             return false;
         }
 
@@ -428,7 +419,7 @@ public unsafe class Memory
     {
         if (placeAnywhere == IntPtr.Zero || wallAnywhere == IntPtr.Zero || wallmountAnywhere == IntPtr.Zero)
         {
-            LogError("Could not setup memory for placing anywhere");
+            LogError("无法设置任意摆放的内存地址");
             return;
         }
 
