@@ -25,7 +25,7 @@ using System.Runtime.InteropServices;
 using static ReMakePlacePlugin.Memory;
 using HousingFurniture = Lumina.Excel.Sheets.HousingFurniture;
 using TaskManager = ECommons.Automation.NeoTaskManager.TaskManager;
-using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.ValueType;
+using AtkValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
 
 namespace ReMakePlacePlugin;
 
@@ -42,17 +42,17 @@ public class ReMakePlacePlugin : IDalamudPlugin
     public static List<HousingItem> ItemsToDye = new List<HousingItem>();
 
     private delegate bool UpdateLayoutDelegate(IntPtr a1);
-    private HookWrapper<UpdateLayoutDelegate> IsSaveLayoutHook;
+    private HookWrapper<UpdateLayoutDelegate> IsSaveLayoutHook = null!;
 
     // Function for selecting an item, usually used when clicking on one in game.        
     public delegate void SelectItemDelegate(IntPtr housingStruct, IntPtr item);
-    private static HookWrapper<SelectItemDelegate> SelectItemHook;
+    private static HookWrapper<SelectItemDelegate> SelectItemHook = null!;
 
     public delegate long GetSelectedHousingItemAddressDelegate(long housingManager);
-    private static HookWrapper<GetSelectedHousingItemAddressDelegate> GetSelectedHousingItemAddressHook;
+    private static HookWrapper<GetSelectedHousingItemAddressDelegate> GetSelectedHousingItemAddressHook = null!;
 
     public delegate void InteractWithHousingItemDelegate(long agentHousingPtr, long unk);
-    private static HookWrapper<InteractWithHousingItemDelegate> InteractWithHousingItemHook;
+    private static HookWrapper<InteractWithHousingItemDelegate> InteractWithHousingItemHook = null!;
 
     public static bool CurrentlyPlacingItems = false;
 
@@ -62,7 +62,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
     public static bool ApplyChange = false;
 
-    public static SaveLayoutManager LayoutManager;
+    public static SaveLayoutManager LayoutManager = null!;
 
     public static bool logHousingDetour = false;
 
@@ -73,7 +73,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
     public List<HousingItem> ExteriorItemList = new List<HousingItem>();
     public List<HousingItem> UnusedItemList = new List<HousingItem>();
 
-    private HookWrapper<AtkUnitBase.Delegates.FireCallback> AddonFireCallbackHook;
+    private HookWrapper<AtkUnitBase.Delegates.FireCallback> AddonFireCallbackHook = null!;
     private Stain? PreviouslySelectedStain = null;
     private bool IsSelectingDye = false;
     private List<uint> MissingDyes = new List<uint>();
@@ -220,22 +220,22 @@ public class ReMakePlacePlugin : IDalamudPlugin
             {
                 switch (a->Type)
                 {
-                    case ValueType.Int:
+                    case AtkValueType.Int:
                         {
                             atkValueList.Add(a->Int);
                             break;
                         }
-                    case ValueType.String:
+                    case AtkValueType.String:
                         {
-                            atkValueList.Add(Marshal.PtrToStringUTF8(new IntPtr(a->String)));
+                            atkValueList.Add(Marshal.PtrToStringUTF8(new IntPtr(a->String)) ?? string.Empty);
                             break;
                         }
-                    case ValueType.UInt:
+                    case AtkValueType.UInt:
                         {
                             atkValueList.Add(a->UInt);
                             break;
                         }
-                    case ValueType.Bool:
+                    case AtkValueType.Bool:
                         {
                             atkValueList.Add(a->Byte != 0);
                             break;
@@ -359,7 +359,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
     }
 
     public delegate void PlaceItemDelegate(IntPtr housingStruct, IntPtr item);
-    private static HookWrapper<PlaceItemDelegate> PlaceItemHook;
+    private static HookWrapper<PlaceItemDelegate> PlaceItemHook = null!;
     unsafe static public void PlaceItemDetour(IntPtr housing, IntPtr item)
     {
         /*
@@ -379,7 +379,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
 
 
     internal delegate ushort GetIndexDelegate(byte type, byte objStruct);
-    internal static HookWrapper<GetIndexDelegate> GetYardIndexHook;
+    internal static HookWrapper<GetIndexDelegate> GetYardIndexHook = null!;
     internal static ushort GetYardIndex(byte plotNumber, byte inventoryIndex)
     {
         var result = GetYardIndexHook.Original(plotNumber, inventoryIndex);
@@ -395,8 +395,8 @@ public class ReMakePlacePlugin : IDalamudPlugin
     }
 
     internal delegate IntPtr GetObjectDelegate(IntPtr ObjList, ushort index);
-    internal static HookWrapper<GetObjectDelegate> GetGameObjectHook;
-    internal static HookWrapper<GetActiveObjectDelegate> GetObjectFromIndexHook;
+    internal static HookWrapper<GetObjectDelegate> GetGameObjectHook = null!;
+    internal static HookWrapper<GetActiveObjectDelegate> GetObjectFromIndexHook = null!;
 
     internal static IntPtr GetGameObject(IntPtr ObjList, ushort index)
     {
@@ -404,7 +404,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
     }
 
     public delegate void UpdateYardDelegate(IntPtr housingStruct, ushort index);
-    private static HookWrapper<UpdateYardDelegate> UpdateYardObjHook;
+    private static HookWrapper<UpdateYardDelegate> UpdateYardObjHook = null!;
 
 
     private void UpdateYardObj(IntPtr objectList, ushort index)
@@ -912,7 +912,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
     public unsafe void MatchLayout()
     {
 
-        List<HousingGameObject> allObjects = null;
+        List<HousingGameObject>? allObjects = null;
         Memory Mem = Memory.Instance;
 
         Quaternion rotateVector = new();
@@ -958,7 +958,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
             if (!IsSelectedFloor(gameObject.Y)) continue;
 
             uint furnitureKey = gameObject.housingRowId;
-            HousingItem houseItem = null;
+            HousingItem? houseItem = null;
 
             Vector3 localPosition = new Vector3(gameObject.X, gameObject.Y, gameObject.Z);
             float localRotation = gameObject.rotation;
@@ -1032,7 +1032,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
         {
 
             uint furnitureKey = gameObject.housingRowId;
-            HousingItem houseItem = null;
+            HousingItem? houseItem = null;
 
             Item item;
             Vector3 localPosition = new Vector3(gameObject.X, gameObject.Y, gameObject.Z);
@@ -1362,7 +1362,7 @@ public class ReMakePlacePlugin : IDalamudPlugin
     }
 
 
-    private void TerritoryChanged(ushort e)
+    private void TerritoryChanged(uint territory)
     {
         Config.DrawScreen = false;
         Config.Save();
@@ -1385,18 +1385,20 @@ public class ReMakePlacePlugin : IDalamudPlugin
         }
     }
 
-    public static void Log(string message, string detail_message = "")
+    public static void Log(string message, string? detail_message = null)
     {
         var msg = $"{message}";
-        Svc.Log.Info(detail_message == "" ? msg : detail_message);
+        Svc.Log.Info(string.IsNullOrEmpty(detail_message) ? msg : detail_message);
         Svc.Chat.Print(msg);
     }
-    public static void LogError(string message, string detail_message = "")
+
+    public static void LogError(string message, string? detail_message = null)
     {
         var msg = $"{message}";
         Svc.Log.Error(msg);
 
-        if (detail_message.Length > 0) Svc.Log.Error(detail_message);
+        if (!string.IsNullOrEmpty(detail_message))
+            Svc.Log.Error(detail_message);
 
         Svc.Chat.PrintError(msg);
     }

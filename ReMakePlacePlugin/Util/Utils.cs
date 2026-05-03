@@ -90,7 +90,7 @@ public static class Utils
         };
     }
 
-    public static HousingItem GetNearestHousingItem(IEnumerable<HousingItem> items, Vector3 position)
+    public static HousingItem? GetNearestHousingItem(IEnumerable<HousingItem> items, Vector3 position)
     {
         return items
             .OrderBy(item => FastDistance(position, new Vector3(item.X, item.Y, item.Z)))

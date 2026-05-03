@@ -67,10 +67,11 @@ public class Furniture : BasicItem
     public Color GetColor()
     {
 
-        if (properties.TryGetValue("color", out object colorObj))
+        if (properties != null && properties.TryGetValue("color", out var colorObj) && colorObj is string color)
         {
-            var color = (string)colorObj;
-            return System.Drawing.ColorTranslator.FromHtml("#" + color.Substring(0, 6));
+            // Be defensive: malformed JSON could contain non-string or short values.
+            if (color.Length >= 6)
+                return ColorTranslator.FromHtml("#" + color.Substring(0, 6));
         }
 
         return Color.Empty;
@@ -78,12 +79,15 @@ public class Furniture : BasicItem
 
     public BasicItem GetMaterial()
     {
-        if (properties.TryGetValue("material", out object materialObj))
+        if (properties != null && properties.TryGetValue("material", out var materialObj))
         {
             if (materialObj is JsonElement materialJson)
             {
-                return materialJson.Deserialize<BasicItem>();
+                return materialJson.Deserialize<BasicItem>() ?? new BasicItem();
             }
+
+            if (materialObj is BasicItem basic)
+                return basic;
 
         }
 
@@ -165,12 +169,12 @@ public class ObjectToInferredTypesConverter : JsonConverter<object>
 
 public class SaveLayoutManager
 {
-    public static Configuration Config;
-    public static ReMakePlacePlugin Plugin;
+    public static Configuration Config = null!;
+    public static ReMakePlacePlugin Plugin = null!;
 
-    public static List<(Color, uint)> ColorList;
-    private static Dictionary<string, Item> _itemsByName;
-    private static Dictionary<uint, Item> _itemsById;
+    public static List<(Color, uint)> ColorList = null!;
+    private static Dictionary<string, Item> _itemsByName = null!;
+    private static Dictionary<uint, Item> _itemsById = null!;
     private static bool _cacheInitialized = false;
 
     public SaveLayoutManager(ReMakePlacePlugin plugin, Configuration config)
@@ -244,7 +248,7 @@ public class SaveLayoutManager
         return new List<float> { (q.X), (q.Y), (q.Z), (q.W) };
     }
 
-    static HousingItem ConvertToHousingItem(Furniture furniture)
+    static HousingItem? ConvertToHousingItem(Furniture furniture)
     {
         Item? itemRow = null;
 
@@ -257,7 +261,8 @@ public class SaveLayoutManager
             itemRow = itemById;
         }
 
-        if (itemRow == null) return null;
+        if (itemRow == null)
+            return null;
 
         var r = furniture.transform.rotation;
         var quat = new Quaternion(r[0], r[1], r[2], r[3]);
@@ -292,7 +297,7 @@ public class SaveLayoutManager
                 itemList.Add(houseItem);
             }
 
-            foreach (Furniture child in furniture.attachments)
+            foreach (Furniture child in furniture.attachments ?? [])
             {
                 var childItem = ConvertToHousingItem(child);
                 if (childItem != null)
@@ -311,7 +316,15 @@ public class SaveLayoutManager
         var options = new JsonSerializerOptions();
         options.Converters.Add(new ObjectToInferredTypesConverter());
 
-        Layout layout = JsonSerializer.Deserialize<Layout>(jsonString, options);
+        var layout = JsonSerializer.Deserialize<Layout>(jsonString, options);
+        if (layout == null)
+            throw new InvalidDataException($"Failed to deserialize layout from '{path}'.");
+
+        layout.interiorFurniture ??= [];
+        layout.exteriorFurniture ??= [];
+        layout.interiorFixture ??= [];
+        layout.exteriorFixture ??= [];
+        layout.properties ??= new Dictionary<string, dynamic>();
 
         Plugin.InteriorItemList.Clear();
         layoutScale = layout.interiorScale;
@@ -428,7 +441,7 @@ public class SaveLayoutManager
 
             var fixture = new Fixture("Facility");
             fixture.level = "Facility " + ToRoman(workshop.PlaceId[i]);
-            fixture.name = BuildingSheet.GetSubrowOrDefault(1, workshop.BuildingLevel[i])?.Name.Value.Text.ToString();
+            fixture.name = BuildingSheet.GetSubrowOrDefault(1, workshop.BuildingLevel[i])?.Name.Value.Text.ToString() ?? string.Empty;
 
             exterior.Add(fixture);
         }
@@ -439,7 +452,7 @@ public class SaveLayoutManager
             if (granary.PlaceId[i] == 0) continue;
             var fixture = new Fixture("Facility");
             fixture.level = "Facility " + ToRoman(granary.PlaceId[i]);
-            fixture.name = BuildingSheet.GetSubrowOrDefault(2, granary.BuildingLevel[i])?.Name.Value.Text.ToString();
+            fixture.name = BuildingSheet.GetSubrowOrDefault(2, granary.BuildingLevel[i])?.Name.Value.Text.ToString() ?? string.Empty;
 
             exterior.Add(fixture);
         }
@@ -452,7 +465,7 @@ public class SaveLayoutManager
 
             var fixture = new Fixture("Landmark");
             fixture.level = "Landmark " + ToRoman((byte)(i + 1));
-            fixture.name = LandmarkSheet.GetRowOrDefault(id)?.Name.Value.Text.ToString();
+            fixture.name = LandmarkSheet.GetRowOrDefault(id)?.Name.Value.Text.ToString() ?? string.Empty;
             exterior.Add(fixture);
         }
     }
@@ -470,9 +483,10 @@ public class SaveLayoutManager
             for (var j = 0; j < IndoorFloorData.PartsMax; j++)
             {
                 if (fixtures[j].FixtureKey == -1 || fixtures[j].FixtureKey == 0) continue;
-                if (!fixtures[j].Item.HasValue) continue;
+                var itemOpt = fixtures[j].Item;
+                if (!itemOpt.HasValue) continue;
 
-                var item = fixtures[j].Item.Value;
+                var item = itemOpt.Value;
                 if (item.RowId == 0) continue;
 
                 var fixture = new Fixture();
@@ -571,11 +585,9 @@ public class SaveLayoutManager
 
     public void ExportLayout()
     {
-
-        if (Directory.Exists(Config.SaveLocation))
-        {
+        var savePath = Config.SaveLocation;
+        if (string.IsNullOrEmpty(savePath) || Directory.Exists(savePath))
             throw new Exception("Save file not specified");
-        }
 
         Layout save = Plugin.Layout;
         save.playerTransform = new Transform();
@@ -602,7 +614,7 @@ public class SaveLayoutManager
         string pattern = @"\s+(-?(?:[0-9]*[.])?[0-9]+(?:E-[0-9]+)?,?)\s*(?=\s[-\d\]])";
         string result = Regex.Replace(jsonString, pattern, " $1");
 
-        File.WriteAllText(Config.SaveLocation, result);
+        File.WriteAllText(savePath, result);
 
 
         Log("布局导出完成");

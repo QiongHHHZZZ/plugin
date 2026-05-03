@@ -22,7 +22,7 @@ public unsafe class Memory
 
     public delegate InventoryContainer* GetInventoryContainerDelegate(IntPtr inventoryManager, InventoryType inventoryType);
 
-    public static Memory Instance { get; private set; }
+    public static Memory Instance { get; private set; } = null!;
 
     private IntPtr HousingModulePtr { get; }
     private IntPtr LayoutWorldPtr { get; }
@@ -36,7 +36,7 @@ public unsafe class Memory
     {
         try
         {
-            placeAnywhere = Svc.SigScanner.ScanText("C6 ?? ?? ?? 00 00 00 8B FE 48 89") + 6;
+            placeAnywhere = Svc.SigScanner.ScanText("C6 83 ?? ?? ?? ?? ?? 0F 29 44 24") + 6;
             wallAnywhere = Svc.SigScanner.ScanText("48 85 C0 74 ?? C6 87 ?? ?? 00 00 00") + 11;
             wallmountAnywhere = Svc.SigScanner.ScanText("c6 87 83 01 00 00 00 48 83 c4 ??") + 6;
 
@@ -76,27 +76,29 @@ public unsafe class Memory
     {
         var territoryId = Memory.Instance.GetTerritoryTypeId();
 
-        if (!Svc.Data.GetExcelSheet<TerritoryType>().TryGetRow(territoryId, out var row)) return null;
+        // Avoid returning null: callers often compare/format this value.
+        if (!Svc.Data.GetExcelSheet<TerritoryType>().TryGetRow(territoryId, out var row))
+            return "Unknown";
 
         var placeName = row.Name.ToString();
-        var sizeName = placeName.Substring(1, 3);
+        var sizeName = placeName.Substring(2, 2);
 
         switch (sizeName)
         {
-            case "1i1":
+            case "i1":
                 return "Small";
 
-            case "1i2":
+            case "i2":
                 return "Medium";
 
-            case "1i3":
+            case "i3":
                 return "Large";
 
-            case "1i4":
+            case "i4":
                 return "Apartment";
 
             default:
-                return null;
+                return "Unknown";
         }
     }
 
@@ -170,26 +172,34 @@ public unsafe class Memory
         var objectListAddr = (IntPtr)(&mgr->ObjectList);
         var activeObjList = (IntPtr)(mgr->Objects) - 0x08;
 
-        var exteriorItems = Memory.GetContainer(InventoryType.HousingExteriorPlacedItems);
-
-        for (int i = 0; i < exteriorItems->Size; i++)
+        var exteriorItemInventories = new[]
         {
-            var item = exteriorItems->GetInventorySlot(i);
-            if (item == null || item->ItemId == 0) continue;
+            (InventoryType.HousingExteriorPlacedItems, 0),
+            (InventoryType.HousingExteriorPlacedItems2, 40)
+        };
 
-            var itemInfoIndex = GetYardIndex(mgr->Plot, (byte)i);
-
-            var itemInfo = HousingObjectManager.GetItemInfo(mgr, itemInfoIndex);
-            if (itemInfo == null) continue;
-
-            var gameObj = (HousingGameObject*)GetObjectFromIndex(activeObjList, (uint)itemInfo->Index);
-            if (gameObj == null) gameObj = (HousingGameObject*)GetGameObject(objectListAddr, itemInfoIndex);
-
-            if (gameObj != null)
+        foreach (var (exteriorItemInventory, offset) in exteriorItemInventories)
+        {
+            var exteriorItemContainer = Memory.GetContainer(exteriorItemInventory);
+            for (int i = 0; i < exteriorItemContainer->Size; i++)
             {
-                objects.Add(*gameObj);
-            }
+                var item = exteriorItemContainer->GetInventorySlot(i);
+                if (item == null || item->ItemId == 0) continue;
 
+                var itemInfoIndex = GetYardIndex(mgr->Plot, (byte)(i + offset));
+
+                var itemInfo = HousingObjectManager.GetItemInfo(mgr, itemInfoIndex);
+                if (itemInfo == null) continue;
+
+                var gameObj = (HousingGameObject*)GetObjectFromIndex(activeObjList, (uint)itemInfo->Index);
+                if (gameObj == null) gameObj = (HousingGameObject*)GetGameObject(objectListAddr, itemInfoIndex);
+
+                if (gameObj != null)
+                {
+                    objects.Add(*gameObj);
+                }
+
+            }
         }
 
         return objects;
@@ -214,15 +224,13 @@ public unsafe class Memory
 
     public unsafe bool TryGetNameSortedHousingGameObjectList(out List<HousingGameObject> objects)
     {
-        objects = null;
+        objects = new List<HousingGameObject>();
         if (HousingModule == null ||
             HousingModule->GetCurrentManager() == null ||
             HousingModule->GetCurrentManager()->Objects == null)
             return false;
 
-        objects = new List<HousingGameObject>();
-
-        for (var i = 0; i < 400; i++)
+        for (var i = 0; i < 600; i++)
         {
             var oPtr = HousingModule->GetCurrentManager()->Objects[i];
             if (oPtr == 0)

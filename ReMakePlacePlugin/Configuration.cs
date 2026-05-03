@@ -22,7 +22,7 @@ public class Configuration : IPluginConfiguration
 
     public int LoadInterval = 500;
 
-    public string SaveLocation = null;
+    public string? SaveLocation = null;
 
     public bool AutoConfirmDye = false;
     public bool SelectPreviousDye = false;

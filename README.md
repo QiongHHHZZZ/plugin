@@ -1,92 +1,150 @@
-# ReMakePlace Plugin
+# ReMakePlace 插件
 
-A plugin to automatically save and load housing furniture layouts for FFXIV. It can also import/export layouts from the original MakePlace program and plugin as well as the Newer [ReMakePlace](https://github.com/RemakePlace/app).
+ReMakePlace 插件可在 FFXIV 中自动保存和加载房屋家具布局，并支持导入/导出原 MakePlace 程序、MakePlace 插件以及新版 [ReMakePlace](https://github.com/RemakePlace/app) 的布局文件。
 
-## Contents
-* [Installation](#installation)
-* [Usage](#usage)
-  * [Saving a layout from the game](#saving-a-layout-from-the-game)
-  * [Loading a layout into the game](#loading-a-layout-into-the-game)  
-* [FAQ](#faq)
-* [Credits](#credits)
+## 目录
 
+- [安装](#安装)
+- [使用](#使用)
+  - [从游戏中保存布局](#从游戏中保存布局)
+  - [将布局加载到游戏中](#将布局加载到游戏中)
+- [从源码构建](#从源码构建)
+- [常见问题](#常见问题)
+- [致谢](#致谢)
 
-## Installation
-* You will need to use the [FFXIV Quick Launcher](https://goatcorp.github.io/) to run the game. This allows third-party plugins (such as this) to be used.
-* Open the settings window by using the command `/xlsettings` in the chat, or by hitting `Esc` and selecting Dalamud Settings.
-* Click on the "Experimental" tab
-* Copy the following url into a new line on the Custom Plugin Repositories section:
+## 安装
+
+- 你需要通过支持 Dalamud 的启动器运行游戏。
+- 本仓库建议使用 DailyRoutines 维护的 Dalamud：<https://github.com/Dalamud-DailyRoutines/Dalamud>
+- 在游戏内输入 `/xlsettings`，或按 `Esc` 打开 Dalamud 设置。
+- 进入 “Experimental/实验性” 页面。
+- 在 “Custom Plugin Repositories/自定义插件仓库” 中新增以下地址：
+
+  ```text
+  https://raw.githubusercontent.com/QiongHHHZZZ/plugin/master/ReMakePlacePlugin.json
   ```
-  https://raw.githubusercontent.com/RemakePlace/plugin/master/ReMakePlacePlugin.json
-  ```
-* Click on the `+` button. Make sure the new entry has "Enabled" checked.
-* Click the "Save and Close" button
-* Open the plugins window by typing `/xlplugins` in the chat, or hit `Esc` and select Dalamud Plugins
-* Search for "ReMakePlace Plugin" and click "Install"
+
+- 点击 `+` 添加，并确认该仓库已启用。
+- 点击 “Save and Close/保存并关闭”。
+- 输入 `/xlplugins`，或按 `Esc` 打开插件安装窗口。
+- 搜索 “ReMakePlace Plugin” 并安装。
+
 > [!NOTE]
-> This plugin will not work for the CN server. [Follow the steps here to try using an older version of the plugin](https://wiki.makeplace.app/en/plugin/CN-Server)
+> 原上游说明中提到该插件不适用于国服。如需在国服环境使用，请优先确认你使用的 Dalamud 与 API 版本是否匹配，并参考本仓库的构建说明。
 
-## Usage
-Type `/remakeplace`,`/makeplace`, or `/rmp` to open the plugin screen. Most functions are only available when in Rotate Furniture mode (Housing -> Indoor/Outdoor Furnishings. Click on the Rotate button).
+## 使用
 
-### Saving a layout from the game
-* Make sure you are in furniture mode
-* Click on `Save As`, and specify the file name. Done!
+输入 `/remakeplace`、`/makeplace` 或 `/rmp` 打开插件窗口。大多数功能需要在家具布局模式中使用：房屋菜单 -> 室内/室外家具 -> 点击“旋转”。
 
-### Loading a layout into the game
-* Make sure you are in *rotate* furniture mode
-* Make sure the relevant floors are checked.
-* Make sure all the required furniture are placed in the house
-  * The plugin will not touch furniture that are in your inventory or storage
-  * The plugin will not dye furniture for you.
-  * If you re-load the design, all the furniture in the list should be white and not grayed out
-* **If you wish for the plugin to move furniture, check the box for `☑ Apply Layout`**
-* Click on `Load From` and select the .json design file.
-  * Your layout should also show up in the plugin
-  * If there are crashes, check [this section of the FAQ](#why-does-the-plugin-crash-sometimes-when-applying-a-layout):    
+### 从游戏中保存布局
 
-### Interface
-![Settings](screenshot.png?raw=true)  
-* **Save**: Saves the layout to the current file. When first starting the plugin, this is not available since no file is specified. To save both the exterior and interior to the same file, simply save once while inside, then save to the same file again while outside.
-* **Save As**: Saves the layout to the specified file.
-* **Load**: Loads and applies the layout from the current file. The plugin will check the currently placed furniture in the house to see if there is a match with the layout. It also checks if there is a match for the dye color. All layout furniture with no match will be grayed out.
-* **Load From**: Same as Load, but loads the layout from the specified file.
-* **Placement Interval**: The time period between each furniture placement when applying the entire layout. Setting this too low (e.g. 200ms) may cause some furniture placements to be missed.
-* **Label Furniture**: Shows a small tooltip over each furniture, with a button to apply the layout position to the furniture
+- 确认当前处于家具布局模式。
+- 点击 `另存为`，选择文件名后保存。
 
-###
+### 将布局加载到游戏中
 
-## FAQ
-### Help! I can't get the plugin to work.
-Create a github issue or post on the [discord channel](https://discord.gg/f2VAqXKWUw) for help with troubleshooting.
+- 确认当前处于“旋转”家具模式。
+- 确认需要处理的楼层已勾选。
+- 确认布局需要的家具已经放置在房屋中：
+  - 插件不会使用你背包或仓库中的家具。
+  - 插件不会自动给家具染色，除非你使用染色相关功能。
+  - 重新加载设计后，列表中匹配成功的家具应显示为白色，未匹配或不匹配的项目会变灰。
+- 如果需要插件自动移动家具，请勾选 `☑ 应用布局`。
+- 点击 `从文件加载`，选择 `.json` 布局文件。
+- 如果应用布局时崩溃，请参考 [为什么应用布局时插件有时会崩溃？](#为什么应用布局时插件有时会崩溃)
 
-### Does the plugin work if the game is not in English?
-Yes! Saving, loading, and transferring layouts will work in all languages.
+### 界面说明
 
-### Can I use this to copy layouts from other houses?
-No. You can only load layouts when in furniture layout mode, in your own house.
+![Settings](screenshot.png?raw=true)
 
-### Does the plugin use furniture from my inventory or storage?
-It uses the furniture that is already placed in the house. It won't touch your inventory or storage, so there's no worries about messing up inventory management. Also, since placing furniture binds it and makes it untradeable, it's best that the player does it directly.
+- **保存**：保存到当前文件。首次启动时若未选择文件，该按钮不可用。如果想把室内和室外保存到同一个文件，可在室内保存一次，再到室外保存到同一文件。
+- **另存为**：保存到指定文件。
+- **加载**：从当前文件加载布局。插件会检查当前已放置家具是否与布局匹配，也会检查染色是否匹配；未匹配项目会显示为灰色。
+- **从文件加载**：与“加载”相同，但会先选择布局文件。
+- **摆放间隔**：应用布局时两次家具摆放之间的间隔。过低（如 200ms）可能导致漏摆。
+- **标注家具**：在屏幕上显示家具名称，并提供按钮将布局位置应用到对应家具。
 
-### Is it safe to use the plugin?
-Since all third-party plugins are not in line with the game's terms of service, there is always an inherent risk. The plugin's automated furniture placement may also be detectable by the server as there is a very short interval between placing each furniture. You can increase the time interval between each furniture placement to reduce this risk.
- 
-### How do I update the plugin?
-When an update is available, simply return to the plugins window and click on the "Update Plugins" button.
+## 从源码构建
 
-### Why does the furniture snap back to the floor/wall after I apply a layout and exit the furnishing menu?
-Items have a minimum float distance, below which they will snap back to the floor. Similarly, wall-mounted items have a minimum distance they need to be from a wall or partition, otherwise they will snap to it. Unfortunately, this is a game limitation and you will need to adjust your design.
+本项目使用 `Dalamud.NET.Sdk`，构建时需要本机存在 Dalamud dev 目录。
 
-If using the ReMakePlace app, you can enable `Minimum Float Distance` in settings to get a visual indicator when placing furniture.
+- 标准 XIVLauncher 默认路径：`%AppData%\XIVLauncher\addon\Hooks\dev\`
+- XIVLauncherCN 常见路径：`%AppData%\XIVLauncherCN\addon\Hooks\dev\`
 
-### Why does the plugin crash sometimes when applying a layout?
-Make sure of the following:
-- Mouse cursor is not hovering over any item (even if the item is behind the plugin UI). When applying a layout, hovering over an item may cause some game code to conflict with the placement process.
-- Character is not in the way of where furniture will be placed
-- No more than 10 items attached to another (e.g. table-top items on tables, wall-mounted items on partition walls)
+如果构建时报错：
 
-There is unfortunately no solution to the above issues, since this is tied to how the game operates.
+```text
+Dalamud.NET.Sdk: Dalamud installation not found at ...\XIVLauncher\addon\Hooks\dev\
+```
 
-## Credits
-This plugin is a continuation of MakePlace, built by Jawslouis which also credits 3 other great plugins: [HousingPos](https://github.com/Bluefissure/HousingPos), [BDTH](https://github.com/LeonBlade/BDTHPlugin) and [HouseMate](https://github.com/lmcintyre/Housemate).
+可以通过设置 `DALAMUD_HOME` 指定实际 Dalamud dev 路径。
+
+PowerShell 示例：
+
+```powershell
+$env:DALAMUD_HOME = "$env:AppData\XIVLauncherCN\addon\Hooks\dev"
+dotnet build .\ReMakePlacePlugin.sln -c Release
+```
+
+cmd 示例：
+
+```cmd
+set DALAMUD_HOME=%AppData%\XIVLauncherCN\addon\Hooks\dev
+dotnet build ReMakePlacePlugin.sln -c Release
+```
+
+## 常见问题
+
+### 插件无法正常工作怎么办？
+
+请先确认：
+
+- Dalamud 可正常加载。
+- 插件 API 等级与当前 Dalamud 环境匹配。
+- 构建时使用的 `DALAMUD_HOME` 指向正确的 `Hooks\dev` 目录。
+
+如果仍无法解决，可以在 GitHub 提交 issue，或到官方 Discord 频道反馈：<https://discord.gg/f2VAqXKWUw>
+
+### 非英语客户端可以使用吗？
+
+可以。保存、加载、导入和导出布局不依赖游戏语言。
+
+### 可以用它复制别人房子的布局吗？
+
+不可以。插件只能在你自己的房屋中、且处于家具布局模式时加载布局。
+
+### 插件会使用背包或仓库中的家具吗？
+
+不会。插件只会操作已经放置在房屋中的家具，不会移动背包或仓库里的物品。由于放置家具会绑定并使其不可交易，建议玩家自行完成家具放置。
+
+### 使用这个插件安全吗？
+
+任何第三方插件都不符合游戏服务条款，使用时始终存在风险。自动摆放家具可能因为操作间隔过短而被服务器检测到；你可以调高摆放间隔来降低风险。
+
+### 如何更新插件？
+
+当插件有更新时，打开 `/xlplugins` 插件窗口并点击“更新插件”。
+
+### 为什么应用布局并退出装修菜单后，家具会贴回地面或墙面？
+
+家具有最低浮空距离限制，低于该距离会被游戏自动贴回地面。壁挂家具也需要与墙或隔断保持最低距离，否则会被贴回墙面。这是游戏限制，需要手动调整设计。
+
+如果使用 ReMakePlace 应用，可以在设置中启用 `Minimum Float Distance`，放置家具时会显示最低浮空距离提示。
+
+### 为什么应用布局时插件有时会崩溃？
+
+请确认以下事项：
+
+- 鼠标指针没有悬停在任何家具上，即使该家具被插件 UI 遮住也不行。
+- 角色没有挡在家具将要摆放的位置上。
+- 单个家具上不要附着超过 10 个物品，例如桌上物、挂在隔断上的壁挂物等。
+
+这些问题与游戏本身的处理方式有关，目前没有通用解决方案。
+
+## 致谢
+
+本插件是 MakePlace 的延续项目，由 Jawslouis 创建，并参考/致谢以下插件：
+
+- [HousingPos](https://github.com/Bluefissure/HousingPos)
+- [BDTH](https://github.com/LeonBlade/BDTHPlugin)
+- [HouseMate](https://github.com/lmcintyre/Housemate)

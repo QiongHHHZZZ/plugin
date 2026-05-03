@@ -83,7 +83,15 @@ public class ConfigurationWindow : Window, IDisposable
 
         ImGui.BeginChild("RightFloat", border: true);
         ImGui.Text("当前文件位置:"); ImGui.SameLine();
-        ImGui.Selectable((Config.SaveLocation.IsNullOrEmpty() ? "未选择文件" : Config.SaveLocation), false, ImGuiSelectableFlags.Disabled);
+
+        var saveLocation = Config.SaveLocation;
+        string saveLocationLabel;
+        if (string.IsNullOrEmpty(saveLocation))
+            saveLocationLabel = "未选择文件";
+        else
+            saveLocationLabel = saveLocation;
+
+        ImGui.Selectable(saveLocationLabel, false, ImGuiSelectableFlags.Disabled);
         ImGui.Text("注意：缺失物品、染色不匹配或未选楼层的物品会显示为灰色");
         DrawItemListRegion();
         ImGui.EndChild();
@@ -187,11 +195,12 @@ public class ConfigurationWindow : Window, IDisposable
 
     private void LoadLayoutFromFile(bool ApplyLayout = false)
     {
-        if (!Config.SaveLocation.IsNullOrEmpty())
+        var path = Config.SaveLocation;
+        if (!string.IsNullOrEmpty(path))
         {
             try
             {
-                SaveLayoutManager.ImportLayout(Config.SaveLocation);
+                SaveLayoutManager.ImportLayout(path);
                 Log(String.Format("已导入 {0} 个物品", Plugin.InteriorItemList.Count + Plugin.ExteriorItemList.Count));
 
                 if (CheckModeForLoad(ApplyLayout))
@@ -213,11 +222,12 @@ public class ConfigurationWindow : Window, IDisposable
 
     private void ApplyDyesFromFile()
     {
-        if (!Config.SaveLocation.IsNullOrEmpty())
+        var path = Config.SaveLocation;
+        if (!string.IsNullOrEmpty(path))
         {
             try
             {
-                SaveLayoutManager.ImportLayout(Config.SaveLocation);
+                SaveLayoutManager.ImportLayout(path);
                 Log(String.Format("已导入 {0} 个物品", Plugin.InteriorItemList.Count + Plugin.ExteriorItemList.Count));
 
                 if (CheckModeForApplyDyes())
@@ -238,11 +248,12 @@ public class ConfigurationWindow : Window, IDisposable
 
     private void PlaceItemsFromFile()
     {
-        if (!Config.SaveLocation.IsNullOrEmpty())
+        var path = Config.SaveLocation;
+        if (!string.IsNullOrEmpty(path))
         {
             try
             {
-                SaveLayoutManager.ImportLayout(Config.SaveLocation);
+                SaveLayoutManager.ImportLayout(path);
                 Log(String.Format("已导入 {0} 个物品", Plugin.InteriorItemList.Count + Plugin.ExteriorItemList.Count));
 
                 if (CheckModeForLoad())
@@ -368,10 +379,10 @@ public class ConfigurationWindow : Window, IDisposable
             }
             Utils.TeamcraftExport(allItemsList);
         },
-        Config.SaveLocation.IsNullOrEmpty(),
+        string.IsNullOrEmpty(Config.SaveLocation),
         "生成可导入 TeamCraft 的列表链接",
         ImGui.GetContentRegionAvail().X);
-        if (Config.SaveLocation.IsNullOrEmpty())
+        if (string.IsNullOrEmpty(Config.SaveLocation))
         {
             if (Config.ShowTooltips && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
@@ -414,9 +425,10 @@ public class ConfigurationWindow : Window, IDisposable
 
         DrawMainMenuButton("打开文件", () =>
         {
-            string saveName = Config.SaveLocation.IsNullOrEmpty()
+            var currentPath = Config.SaveLocation;
+            var saveName = string.IsNullOrEmpty(currentPath)
                 ? "save"
-                : Path.GetFileNameWithoutExtension(Config.SaveLocation);
+                : Path.GetFileNameWithoutExtension(currentPath);
 
             FileDialogManager.OpenFileDialog("选择布局文件", ".json", (ok, res) =>
             {
@@ -424,7 +436,7 @@ public class ConfigurationWindow : Window, IDisposable
                 Config.SaveLocation = res.FirstOrDefault("");
                 Config.Save();
                 LoadLayoutFromFile();
-            }, 1, Path.GetDirectoryName(Config.SaveLocation));
+            }, 1, Path.GetDirectoryName(Config.SaveLocation ?? string.Empty));
         },
         false,
         "选择要打开的文件",
@@ -435,7 +447,7 @@ public class ConfigurationWindow : Window, IDisposable
             Config.Save();
             LoadLayoutFromFile(true);
         },
-        Config.SaveLocation.IsNullOrEmpty(),
+        string.IsNullOrEmpty(Config.SaveLocation),
         "从当前文件位置尝试应用布局",
         menuDimensions.X);
 
@@ -454,7 +466,7 @@ public class ConfigurationWindow : Window, IDisposable
                 ApplyDyesFromFile();
             }
         },
-        dyeingItems ? false : (Config.SaveLocation.IsNullOrEmpty() || !ctrlKeyPressed),
+        dyeingItems ? false : (string.IsNullOrEmpty(Config.SaveLocation) || !ctrlKeyPressed),
         dyeingItems ? "将停止对家具进行染色" :
             (ctrlKeyPressed ? "尝试应用染色，需要打开“家具染色”窗口" : "按住 CTRL 以应用染色"),
         menuDimensions.X);
@@ -474,9 +486,10 @@ public class ConfigurationWindow : Window, IDisposable
         {
             if (CheckModeForSave())
             {
-                string saveName = Config.SaveLocation.IsNullOrEmpty()
+                var currentPath = Config.SaveLocation;
+                var saveName = string.IsNullOrEmpty(currentPath)
                     ? "save"
-                    : Path.GetFileNameWithoutExtension(Config.SaveLocation);
+                    : Path.GetFileNameWithoutExtension(currentPath);
 
                 FileDialogManager.SaveFileDialog("选择保存位置", ".json", saveName, "json", (ok, res) =>
                 {
@@ -484,7 +497,7 @@ public class ConfigurationWindow : Window, IDisposable
                     Config.SaveLocation = res;
                     Config.Save();
                     SaveLayoutToFile();
-                }, Path.GetDirectoryName(Config.SaveLocation));
+                }, Path.GetDirectoryName(Config.SaveLocation ?? string.Empty));
             }
         },
         false,
@@ -493,7 +506,7 @@ public class ConfigurationWindow : Window, IDisposable
 
         DrawMainMenuButton("保存",
             SaveLayoutToFile,
-            Config.SaveLocation.IsNullOrEmpty(),
+            string.IsNullOrEmpty(Config.SaveLocation),
             "将布局保存到当前文件位置",
             menuDimensions.X);
     }
@@ -578,16 +591,23 @@ public class ConfigurationWindow : Window, IDisposable
         ImGui.TableNextColumn();
 
         var stain = Svc.Data.GetExcelSheet<Stain>().GetRowOrDefault(housingItem.Stain);
-        var colorName = stain?.Name;
 
         if (housingItem.Stain != 0)
         {
-            Utils.StainButton("dye_" + i, stain.Value, new Vector2(20));
-            ImGui.SameLine();
+            if (stain.HasValue)
+            {
+                Utils.StainButton("dye_" + i, stain.Value, new Vector2(20));
+                ImGui.SameLine();
 
-            if (!housingItem.DyeMatch) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.5f, 0.5f, 0.5f, 1));
-            ImGui.Text($"{colorName}");
-            if (!housingItem.DyeMatch) ImGui.PopStyleColor();
+                if (!housingItem.DyeMatch) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.5f, 0.5f, 0.5f, 1));
+                ImGui.Text(stain.Value.Name.ToString());
+                if (!housingItem.DyeMatch) ImGui.PopStyleColor();
+            }
+            else
+            {
+                // Extremely defensive: if the row can't be found, at least show the id.
+                ImGui.Text($"Dye #{housingItem.Stain}");
+            }
         }
         else if (housingItem.MaterialItemKey != 0)
         {
