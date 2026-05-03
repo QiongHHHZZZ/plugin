@@ -533,6 +533,9 @@ public class SaveLayoutManager
                 case "h1":
                     district.name = "Minimalist";
                     break;
+                case "h2":
+                    district.name = "Dark Minimalist";
+                    break;
                 default:
                     break;
             }

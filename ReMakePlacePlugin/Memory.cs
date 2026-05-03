@@ -3,6 +3,7 @@
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.MJI;
+using FFXIVClientStructs.FFXIV.Client.LayoutEngine;
 using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
@@ -42,7 +43,6 @@ public unsafe class Memory
 
             HousingModulePtr = Svc.SigScanner.GetStaticAddressFromSig("48 8B 05 ?? ?? ?? ?? 8B 52");
             LayoutWorldPtr = Svc.SigScanner.GetStaticAddressFromSig("48 8B D1 48 8B 0D ?? ?? ?? ?? 48 85 C9 74 0A", 3);
-
         }
         catch (Exception e)
         {
@@ -186,7 +186,7 @@ public unsafe class Memory
                 var item = exteriorItemContainer->GetInventorySlot(i);
                 if (item == null || item->ItemId == 0) continue;
 
-                var itemInfoIndex = GetYardIndex(mgr->Plot, (byte)(i + offset));
+                var itemInfoIndex = GetYardIndex(mgr->Plot, (ushort)(i + offset));
 
                 var itemInfo = HousingObjectManager.GetItemInfo(mgr, itemInfoIndex);
                 if (itemInfo == null) continue;
@@ -201,7 +201,6 @@ public unsafe class Memory
 
             }
         }
-
         return objects;
     }
 
